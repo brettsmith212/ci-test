@@ -1,186 +1,204 @@
 # CI-Feedback Loop Demo
 
-A demonstration of using Continuous Integration as a feedback loop for AI agents to make code changes without requiring local code execution.
+A demonstration of using Continuous Integration as a feedback loop for AI agents in enterprise software development lifecycle (SDLC).
 
 ## Overview
 
-This demo shows how an AI agent (Amp CLI) can:
-1. Make code changes based on natural language tasks
-2. Push commits to trigger CI
-3. Read CI results and logs
-4. Make corrections if CI fails
-5. Repeat until CI passes
-6. Open a pull request
+This demo shows how an AI agent (Amp CLI) can autonomously:
+
+1. Clone a repository and examine the codebase
+2. Create feature branches and implement changes
+3. Run tests locally and fix issues iteratively
+4. Push only when all CI checks pass
+5. Create branches ready for team review
+
+The key insight is that AI agents can use CI as a feedback mechanism to validate their work before human review, enabling autonomous code contributions in enterprise environments.
 
 ## Architecture
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant Agent as Amp Agent
+    participant Script as amp-agent-simple.sh
     participant Amp as Amp CLI
     participant Git
-    participant GitHub as GitHub Actions
-    participant PR as Pull Request
+    participant GitHub
 
-    User->>Agent: Request task
-    Agent->>Amp: Generate patch for task
-    Amp-->>Agent: Return unified diff
-    Agent->>Git: Apply patch & commit
-    Agent->>GitHub: Push branch
-    GitHub->>GitHub: Run CI workflow
-    
-    alt CI Success
-        GitHub-->>Agent: Success status
-        Agent->>PR: Create pull request
-        Agent-->>User: Task completed
-    else CI Failure
-        GitHub-->>Agent: Failure + logs
-        Agent->>Amp: Fix errors (with CI logs)
-        Amp-->>Agent: Return fix patch
-        Agent->>Git: Apply fix & commit
-        Agent->>GitHub: Push updated branch
-        Note over Agent,GitHub: Repeat until success or max attempts
+    User->>Script: Request task
+    Script->>Git: Clone repository to /tmp
+    Script->>Amp: Send comprehensive instructions
+
+    Note over Amp: Autonomous workflow
+    Amp->>Git: Create feature branch
+    Amp->>Amp: Examine codebase
+    Amp->>Amp: Implement changes
+    Amp->>Git: Commit changes
+    Amp->>Amp: Run npm test
+
+    alt Tests Pass
+        Amp->>GitHub: Push branch
+        Amp-->>Script: Report success
+        Script-->>User: Task completed
+    else Tests Fail
+        Amp->>Amp: Analyze failures & fix
+        Amp->>Git: Commit fixes
+        Note over Amp: Repeat until tests pass
     end
 ```
 
 ## Components
 
-- [`scripts/amp-agent.sh`](scripts/amp-agent.sh) - Main orchestrator script
+- [`scripts/amp-agent-simple.sh`](scripts/amp-agent-simple.sh) - Main orchestrator script
 - [`.github/workflows/ci.yml`](.github/workflows/ci.yml) - GitHub Actions CI workflow
 - [`src/`](src/) - Sample application code with intentional bugs
 - [`tests/`](tests/) - Test suite that will catch bugs
-- [`scripts/setup-demo.sh`](scripts/setup-demo.sh) - Setup and dependency checking
-- [`scripts/examples.sh`](scripts/examples.sh) - Usage examples
 
 ## Quick Start
 
-1. **Setup the demo:**
+1. **Ensure Amp CLI is installed and configured:**
+
    ```bash
-   ./scripts/setup-demo.sh
+   # Check if amp is available
+   amp --version
+
+   # Make sure git commands are allowed (see Prerequisites section)
    ```
 
-2. **Run a simple example:**
+2. **Run the demo:**
+
    ```bash
-   ./scripts/amp-agent.sh \
-     --task "fix the power function to handle negative exponents" \
-     --repo $(git config --get remote.origin.url)
+   ./scripts/amp-agent-simple.sh \
+     --task "fix the power function to handle negative exponents correctly" \
+     --repo git@github.com:brettsmith212/ci-test.git
    ```
 
-3. **View more examples:**
-   ```bash
-   ./scripts/examples.sh
-   ```
+3. **Watch Amp work autonomously:**
+   - Clones repo to /tmp
+   - Examines codebase structure
+   - Creates feature branch
+   - Fixes the bug
+   - Runs tests until they pass
+   - Pushes branch to origin
 
 ## Prerequisites
 
 - **Amp CLI** - The AI coding agent ([installation guide](https://github.com/sourcegraph/amp))
-- **GitHub CLI** (`gh`) - For GitHub API access ([installation guide](https://github.com/cli/cli))
-- **jq** - For JSON parsing ([installation guide](https://jqlang.github.io/jq/))
 - **Git** - Configured with push access to target repository
-- **GitHub token** with permissions:
-  - `contents:write` (push commits)
-  - `pull_requests:write` (create PRs)
-  - `actions:read` (read CI status)
+- **Amp Command Allowlist** - Configure Amp to allow git commands by adding this to `~/.config/amp/settings.json`:
+  ```json
+  {
+    "amp.mode": "connected",
+    "amp.commands.allowlist": [
+      "git checkout -b *",
+      "git switch -c *",
+      "git add .",
+      "git add *",
+      "git commit -m *",
+      "git commit -am *",
+      "git push origin *",
+      "npm test",
+      "npm run *",
+      "node -e *"
+    ]
+  }
+  ```
 
 ## Usage
 
 ### Basic Usage
+
 ```bash
-./scripts/amp-agent.sh --task "TASK_DESCRIPTION" --repo "REPO_URL"
+./scripts/amp-agent-simple.sh --task "TASK_DESCRIPTION" --repo "REPO_URL"
 ```
 
-### Advanced Options
+### Examples
+
 ```bash
-./scripts/amp-agent.sh \
-  --task "migrate Mocha tests to Vitest" \
-  --repo git@github.com:org/repo.git \
-  --base-branch develop \
-  --max-attempts 3 \
-  --dry-run
+# Fix a specific bug
+./scripts/amp-agent-simple.sh \
+  --task "fix the power function to handle negative exponents correctly" \
+  --repo git@github.com:brettsmith212/ci-test.git
+
+# Add a new feature
+./scripts/amp-agent-simple.sh \
+  --task "add input validation to the calculator add method" \
+  --repo git@github.com:your-org/your-repo.git
+
+# Refactor code
+./scripts/amp-agent-simple.sh \
+  --task "convert the Calculator class to use TypeScript" \
+  --repo https://github.com/your-org/your-repo.git
 ```
 
 ### Available Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--task` | Natural language task description | Required |
-| `--repo` | Git repository URL (SSH or HTTPS) | Required |
-| `--base-branch` | Base branch for pull request | `main` |
-| `--max-attempts` | Maximum retry attempts on CI failure | `5` |
-| `--poll-interval` | CI status polling interval (seconds) | `30` |
-| `--work-dir` | Working directory for cloning | `/tmp/amp-agent-PID` |
-| `--dry-run` | Don't push commits or create PR | `false` |
+| Option   | Description                       | Required |
+| -------- | --------------------------------- | -------- |
+| `--task` | Natural language task description | Yes      |
+| `--repo` | Git repository URL (SSH or HTTPS) | Yes      |
+| `--help` | Show usage information            | No       |
 
 ## How It Works
 
-1. **Clone & Branch**: Creates a new branch from the target repository
-2. **Generate Patch**: Uses Amp CLI to create code changes based on the task
-3. **Apply & Commit**: Applies the patch and commits changes
-4. **Push & Monitor**: Pushes to GitHub and monitors CI status
-5. **Iterate on Failures**: If CI fails, feeds error logs back to Amp for fixes
-6. **Create PR**: Once CI passes, opens a pull request
+1. **Clone & Setup**: Script clones the repository to a temporary directory
+2. **Autonomous Agent**: Amp receives comprehensive instructions to work independently
+3. **Code Analysis**: Amp examines the codebase structure and understands the project
+4. **Branch Creation**: Amp creates a feature branch with timestamp
+5. **Implementation**: Amp makes the requested code changes
+6. **Local Testing**: Amp runs `npm test` and other CI commands locally
+7. **Iterative Fixes**: If tests fail, Amp analyzes output and fixes issues
+8. **Push When Ready**: Only pushes to origin when all tests pass
+9. **Branch Ready**: Creates a branch ready for team review and PR creation
 
 ## Example Tasks
 
 The demo includes a sample JavaScript project with intentional bugs perfect for testing:
 
-- **Bug Fix**: "fix the power function to handle negative exponents"
-- **Test Migration**: "migrate tests from Mocha to Vitest"
+- **Bug Fix**: "fix the power function to handle negative exponents correctly"
+- **Input Validation**: "add input validation to the calculator methods"
 - **Code Quality**: "add JSDoc comments to all functions"
 - **Performance**: "optimize factorial function to use iteration"
 - **TypeScript**: "convert JavaScript to TypeScript with type definitions"
 
-## Configuration
+## Sample Output
 
-Settings can be customized in [`.amp-agent.config`](.amp-agent.config):
+When you run the script, you'll see Amp working autonomously:
 
-```bash
-MAX_ATTEMPTS=5
-POLL_INTERVAL=30
-BASE_BRANCH=main
-LOG_SIZE_LIMIT=4000
+```
+ℹ️  Starting Amp CI-Feedback Loop Agent
+ℹ️  Task: fix the power function to handle negative exponents correctly
+ℹ️  Repo: git@github.com:brettsmith212/ci-test.git
+ℹ️  Working directory: /tmp/amp-agent-1748710711
+ℹ️  Cloning repository...
+ℹ️  Sending task to Amp...
+ℹ️  Waiting for Amp to complete the workflow...
+
+[Amp examines codebase, creates branch, fixes bug, runs tests, pushes branch]
+
+✅ Amp completed the task successfully!
+ℹ️  Check the repository for the new feature branch with your changes.
 ```
 
 ## Safety Features
 
-- **Dry Run Mode**: Test changes without pushing
-- **Attempt Limits**: Prevents infinite retry loops
-- **Patch Validation**: Checks patches before applying
-- **Working Directory Isolation**: Uses temporary directories
-- **Cleanup on Exit**: Removes temporary files automatically
+- **Isolated Execution**: Uses temporary directories for all operations
+- **Local Testing**: Verifies all tests pass before pushing
+- **Command Allowlist**: Only allows pre-approved git/npm commands
+- **Automatic Cleanup**: Removes temporary files on completion
 
 ## Troubleshooting
 
 ### Common Issues
 
 1. **Amp CLI not found**: Install from [sourcegraph/amp](https://github.com/sourcegraph/amp)
-2. **GitHub CLI auth**: Run `gh auth login`
-3. **Permission denied**: Ensure GitHub token has required scopes
-4. **CI timeout**: Increase `--poll-interval` for slow CI workflows
+2. **Git commands rejected**: Configure the command allowlist in amp settings
+3. **Permission denied**: Ensure git is configured with push access to the repository
+4. **Tests timeout**: The demo project uses simple Node.js tests that should run quickly
 
-### Debug Mode
+## Key Benefits
 
-Enable verbose logging:
-```bash
-export DEBUG=1
-./scripts/amp-agent.sh --task "your task" --repo "your-repo"
-```
-
-## Extending the Demo
-
-### Adding New CI Checks
-
-Modify [`.github/workflows/ci.yml`](.github/workflows/ci.yml) to add:
-- Code coverage requirements
-- Security scanning
-- Performance benchmarks
-- Custom validation steps
-
-### Custom Agent Behaviors
-
-The orchestrator script can be extended to:
-- Support multiple programming languages
-- Integrate with different CI systems (GitLab, CircleCI, etc.)
-- Add Slack/email notifications
-- Implement approval workflows
+- **No Local Environment Required**: Agent works in isolated temporary directories
+- **Validated Changes**: Only pushes code that passes all tests
+- **Enterprise Ready**: Respects git workflows and creates reviewable branches
+- **Iterative Problem Solving**: Agent can fix issues and retry until success
+- **Scalable**: Can be automated for large-scale code maintenance tasks
