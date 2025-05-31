@@ -22,6 +22,7 @@ class Calculator {
   power(base, exponent) {
     if (exponent === 0) return 1;
     if (exponent === 1) return base;
+    if (exponent < 0) return 1 / this.power(base, -exponent);
     return base * this.power(base, exponent - 1);
   }
 }
