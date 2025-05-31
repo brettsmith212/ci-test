@@ -69,9 +69,12 @@ if [[ -z "$REPO_URL" ]]; then
 fi
 
 # Check dependencies
-for dep in git amp; do
+for dep in git amp gh; do
     if ! command -v "$dep" &> /dev/null; then
         log_error "Required dependency not found: $dep"
+        if [[ "$dep" == "gh" ]]; then
+            log_error "GitHub CLI is required to monitor CI status. Install: https://github.com/cli/cli"
+        fi
         exit 1
     fi
 done
@@ -109,18 +112,22 @@ WORKFLOW TO FOLLOW:
 1. Create a new feature branch (name it something like \"amp/fix-TIMESTAMP\")
 2. Implement the requested changes to accomplish the task
 3. Commit your changes with a meaningful commit message
-4. Run the CI/test commands to verify your changes work (use npm test or the appropriate test command for this project)
-5. If tests fail, analyze the output and fix the issues
-6. Repeat step 4-5 until all tests pass
-7. Once CI passes, push your branch to origin
-8. Report completion with the branch name and final commit SHA
+4. Push your branch to origin to trigger GitHub Actions CI
+5. Monitor the GitHub Actions workflow status using: 'gh run list --branch BRANCH_NAME --limit 1'
+6. Wait for CI completion using: 'gh run watch RUN_ID' or check status periodically
+7. If CI fails, get detailed logs using: 'gh run view RUN_ID --log'
+8. Analyze the failure logs, make fixes, commit, and push again to re-trigger CI
+9. Repeat steps 5-8 until all GitHub Actions checks pass
+10. Report completion with the branch name and final commit SHA
 
 IMPORTANT GUIDELINES:
 - Look at the existing code structure and follow the same patterns
 - Make minimal, focused changes
 - Ensure your solution handles edge cases properly
-- Don't push until all tests pass locally
-- Be thorough in testing your changes
+- Use GitHub Actions CI as your testing mechanism - don't run tests locally
+- Push early and often to get CI feedback
+- Read CI logs carefully to understand failures
+- Be thorough in analyzing and fixing CI failures
 
 Please start by examining the repository structure and understanding the codebase, then proceed with the workflow above."
 

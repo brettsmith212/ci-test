@@ -83,8 +83,9 @@ sequenceDiagram
 ## Prerequisites
 
 - **Amp CLI** - The AI coding agent ([installation guide](https://github.com/sourcegraph/amp))
-- **Git** - Configured with push access to target repository
-- **Amp Command Allowlist** - Configure Amp to allow git commands by adding this to `~/.config/amp/settings.json`:
+- **Git** - Configured with push access to target repository  
+- **GitHub CLI** (`gh`) - For monitoring CI status ([installation guide](https://github.com/cli/cli))
+- **Amp Command Allowlist** - Configure Amp to allow git and GitHub CLI commands by adding this to `~/.config/amp/settings.json`:
   ```json
   {
     "amp.mode": "connected",
@@ -96,6 +97,10 @@ sequenceDiagram
       "git commit -m *",
       "git commit -am *",
       "git push origin *",
+      "gh run list *",
+      "gh run watch *", 
+      "gh run view *",
+      "gh api *",
       "npm test",
       "npm run *",
       "node -e *"
