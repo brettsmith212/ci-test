@@ -40,6 +40,27 @@ describe('Calculator', () => {
     });
   });
 
+  describe('sqrt', () => {
+    it('should calculate square root of positive numbers', () => {
+      expect(calc.sqrt(9)).to.equal(3);
+      expect(calc.sqrt(16)).to.equal(4);
+      expect(calc.sqrt(2)).to.be.closeTo(1.414, 0.001);
+    });
+
+    it('should calculate square root of zero', () => {
+      expect(calc.sqrt(0)).to.equal(0);
+    });
+
+    it('should calculate square root of decimal numbers', () => {
+      expect(calc.sqrt(2.25)).to.equal(1.5);
+    });
+
+    it('should throw error for negative numbers', () => {
+      expect(() => calc.sqrt(-1)).to.throw('Cannot calculate square root of negative number');
+      expect(() => calc.sqrt(-4)).to.throw('Cannot calculate square root of negative number');
+    });
+  });
+
   describe('power', () => {
     it('should calculate power correctly', () => {
       expect(calc.power(2, 3)).to.equal(8);

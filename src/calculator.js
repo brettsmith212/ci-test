@@ -18,6 +18,13 @@ class Calculator {
     return a / b;
   }
 
+  sqrt(number) {
+    if (number < 0) {
+      throw new Error('Cannot calculate square root of negative number');
+    }
+    return Math.sqrt(number);
+  }
+
   // Intentionally buggy function for demo
   power(base, exponent) {
     if (exponent === 0) return 1;
